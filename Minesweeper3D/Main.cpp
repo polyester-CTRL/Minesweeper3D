@@ -11,7 +11,7 @@ void Main()
 	const Texture earthTexture{ U"example/texture/earth.jpg", TextureDesc::MippedSRGB };
 	const Texture woodTexture{ U"example/texture/wood.jpg", TextureDesc::MippedSRGB };
 	const MSRenderTexture renderTexture{ Scene::Size(), TextureFormat::R8G8B8A8_Unorm_SRGB, HasDepth::Yes };
-	DebugCamera3D camera{ renderTexture.size(), 30_deg, Vec3{ 10, 16, -32 } };
+	BasicCamera3D camera{ renderTexture.size(), 30_deg, Vec3{ 9, 19, -29 } };
 	FontAsset::Register(U"Number", 10, Typeface::Medium);
 
 	const int numOfBlock = 7;
@@ -52,8 +52,9 @@ void Main()
 	while (System::Update())
 	{
 		ClearPrint();
-		camera.update(2.0);
+		// camera.update(2.0);
 		Graphics3D::SetCameraTransform(camera);
+		// Print << camera.getEyePosition();  // デバッグ用カメラの位置を取得
 
 		{
 			const Ray ray = camera.screenToRay(Cursor::PosF());
