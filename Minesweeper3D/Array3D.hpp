@@ -99,25 +99,7 @@ public:
 		return Vec3{index, y, z};
 	}
 
-	int32 countNeighborBomb(size_t index)
-	{
-		Vec3 pos = vec3FromIndex(index);
-		int32 result = 0;
-		for (int i = max(0, pos.x - 1); i < min(m_width, pos.x + 2); i++)
-		{
-			for (int j = max(0, pos.y - 1); j < min(m_height, pos.y + 2); j++)
-			{
-				for (int k = max(0, pos.z - 1); k < min(m_depth, pos.z + 2); k++)
-				{
-					if (get(i, j, k) > 0)
-					{
-						result++;
-					}
-				}
-			}
-		}
-		return result;
-	}
+	
 
 
 private:

@@ -3,6 +3,8 @@
 // # include "TorusIntersect.hpp"
 
 
+
+
 void Main()
 {
 	Window::Resize(1280, 720);
@@ -12,7 +14,7 @@ void Main()
 	const Texture woodTexture{ U"example/texture/wood.jpg", TextureDesc::MippedSRGB };
 	const MSRenderTexture renderTexture{ Scene::Size(), TextureFormat::R8G8B8A8_Unorm_SRGB, HasDepth::Yes };
 	BasicCamera3D camera{ renderTexture.size(), 30_deg, Vec3{ 9, 19, -29 } };
-	FontAsset::Register(U"Number", 10, Typeface::Medium);
+	
 
 	const int numOfBlock = 7;
 
@@ -33,10 +35,17 @@ void Main()
 
 	const Mesh billboard{ MeshData::Billboard() };
 
+	// 表示用テクスチャ
+	RenderTexture numRenderTexture(128, 128);
+	// フォント
+	const Font font(60, Typeface::Medium);
+
 	bool isGameover = false;
 	Array<size_t> checked(numOfBlock * numOfBlock * numOfBlock);
 
 	Array3D<std::pair<int32, OrientedBox>> boxes(numOfBlock, numOfBlock, numOfBlock);
+	Array3D<Mesh> billboards(numOfBlock, numOfBlock, numOfBlock, Mesh{MeshData::Billboard()});
+	Array3D<RenderTexture> numRenderTextures(numOfBlock, numOfBlock, numOfBlock, RenderTexture(128, 128));
 	for (int32 i = 0; i < numOfBlock; i++)
 	{
 		for (int32 j = 0; j < numOfBlock; j++)
@@ -55,6 +64,8 @@ void Main()
 		// camera.update(2.0);
 		Graphics3D::SetCameraTransform(camera);
 		// Print << camera.getEyePosition();  // デバッグ用カメラの位置を取得
+
+
 
 		{
 			const Ray ray = camera.screenToRay(Cursor::PosF());
@@ -93,6 +104,37 @@ void Main()
 							
 							// FontAsset(U"Number")(U"0").draw(camera.billboard(Vec3{i - numOfBlock / 2, j - numOfBlock / 2, k - numOfBlock / 2} *rotation + Vec3{0, 4, 0}, 1));
 						}
+						else
+						{
+							auto countBomb = [&]() ->int32{
+								
+								Vec3 pos = boxes.vec3FromIndex(boxes.get_index(i, j, k));
+								int32 result = 0;
+								for (int32 i = Max<int32>(0, pos.x - 1); i < Min<int32>(boxes.width(), pos.x + 2); i++)
+								{
+									for (int32 j = Max<int32>(0, pos.y - 1); j < Min<int32>(boxes.height(), pos.y + 2); j++)
+									{
+										for (int32 k = Max<int32>(0, pos.z - 1); k < Min<int32>(boxes.depth(), pos.z + 2); k++)
+										{
+											if (boxes.get(i, j, k).first > 0)
+											{
+												result++;
+											}
+										}
+									}
+								}
+								return result;
+							};
+							int32 numBomb = countBomb();
+							if (numBomb > 0)
+							{
+								const ScopedRenderTarget2D renderTarget2d(numRenderTextures.get(i, j, k));
+								const ScopedRenderStates2D blendState2d(BlendState(true, Blend::SrcAlpha, Blend::InvSrcAlpha, BlendOp::Add, Blend::Zero, Blend::One, BlendOp::Max, false));
+								font(numBomb).drawAt(64, 64, Palette::Green);
+								billboards.get(i, j, k).draw(camera.billboard(tmpbox.second.center, 0.9), numRenderTextures.get(i, j, k));
+								
+							}
+						}
 						boxes.set(i, j, k, tmpbox);
 						
 					}
@@ -104,6 +146,7 @@ void Main()
 				auto& tmpbox = boxes.get(boxIndex);
 				if (MouseL.down())
 				{
+					// 押したところに爆弾があったらゲームオーバー
 					if (tmpbox.first > 0)
 					{
 						// Print << U"Game Over";
@@ -111,6 +154,7 @@ void Main()
 					}
 					else
 					{
+						// 爆弾がなければ透明にする
 						boxes.set(boxIndex, { -1, tmpbox.second });
 					}
 				}
