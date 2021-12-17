@@ -10,22 +10,23 @@ void Main()
 	Window::Resize(1280, 720);
 	const ColorF backgroundColor = ColorF{ 0.4, 0.6, 0.8 }.removeSRGBCurve();
 	const Texture uvChecker{ U"example/texture/uv.png", TextureDesc::MippedSRGB };
-	const Texture earthTexture{ U"example/texture/earth.jpg", TextureDesc::MippedSRGB };
-	const Texture woodTexture{ U"example/texture/wood.jpg", TextureDesc::MippedSRGB };
+	// const Texture earthTexture{ U"example/texture/earth.jpg", TextureDesc::MippedSRGB };
+	// const Texture woodTexture{ U"example/texture/wood.jpg", TextureDesc::MippedSRGB };
 	const MSRenderTexture renderTexture{ Scene::Size(), TextureFormat::R8G8B8A8_Unorm_SRGB, HasDepth::Yes };
-	BasicCamera3D camera{ renderTexture.size(), 30_deg, Vec3{ 9, 19, -29 } };
+	DebugCamera3D camera{ renderTexture.size(), 40_deg, Vec3{ 9, 15, -20 } };
+	
 	
 
 	const int numOfBlock = 7;
 
-	OrientedBox box{ 0,4,0,1 }, box2{4};
+	OrientedBox box{ 0,4,0,1 };
 	
-	Quaternion rotation;
-	bool grabbedX = false;
-	bool grabbedY = false;
+	Quaternion rotation; // 回転の状態
+	// bool grabbedX = false;
+	// bool grabbedY = false;
 
 
-	const Disc diY{ box.center, 1 };
+	// const Disc diY{ box.center, 1 };
 	
 
 	const Cylinder cY{ box.center, 6.0, 1 };
@@ -33,19 +34,20 @@ void Main()
 	const Mesh torusY{ MeshData::Torus(box.center, 6.0, 0.6) };
 	const Mesh torusX{ MeshData::Torus(6.0, 0.6) };
 
-	const Mesh billboard{ MeshData::Billboard() };
+	// const Mesh billboard{ MeshData::Billboard() };
 
 	// 表示用テクスチャ
-	RenderTexture numRenderTexture(128, 128);
+	// RenderTexture numRenderTexture(128, 128);
 	// フォント
-	const Font font(60, Typeface::Medium);
+	// const Font font(60, Typeface::Medium);
 
 	bool isGameover = false;
 	Array<size_t> checked(numOfBlock * numOfBlock * numOfBlock);
 
 	Array3D<std::pair<int32, OrientedBox>> boxes(numOfBlock, numOfBlock, numOfBlock);
 	Array3D<Mesh> billboards(numOfBlock, numOfBlock, numOfBlock, Mesh{MeshData::Billboard()});
-	Array3D<RenderTexture> numRenderTextures(numOfBlock, numOfBlock, numOfBlock, RenderTexture(128, 128));
+	Array3D<MSRenderTexture> numRenderTextures(numOfBlock, numOfBlock, numOfBlock, MSRenderTexture(128, 128));
+	Array3D<Font> fonts(numOfBlock, numOfBlock, numOfBlock, Font{ 60, Typeface::Medium });
 	for (int32 i = 0; i < numOfBlock; i++)
 	{
 		for (int32 j = 0; j < numOfBlock; j++)
@@ -61,9 +63,10 @@ void Main()
 	while (System::Update())
 	{
 		ClearPrint();
-		// camera.update(2.0);
+		camera.update(2.0);
 		Graphics3D::SetCameraTransform(camera);
-		// Print << camera.getEyePosition();  // デバッグ用カメラの位置を取得
+		Print << camera.getEyePosition();  // デバッグ用カメラの位置を取得
+		Print << camera.getFocusPosition();
 
 
 
@@ -130,9 +133,14 @@ void Main()
 							{
 								const ScopedRenderTarget2D renderTarget2d(numRenderTextures.get(i, j, k));
 								const ScopedRenderStates2D blendState2d(BlendState(true, Blend::SrcAlpha, Blend::InvSrcAlpha, BlendOp::Add, Blend::Zero, Blend::One, BlendOp::Max, false));
-								font(numBomb).drawAt(64, 64, Palette::Green);
-								billboards.get(i, j, k).draw(camera.billboard(tmpbox.second.center, 0.9), numRenderTextures.get(i, j, k));
+								fonts.get(i, j, k)(numBomb).drawAt(64, 64, Palette::Green);
 								
+								billboards.get(i, j, k).draw(camera.billboard(tmpbox.second.center, 0.9), numRenderTextures.get(i, j, k));
+								// レンダーテクスチャへの描画を完了
+								{
+									Graphics2D::Flush();
+									numRenderTextures.get(i, j, k).resolve();
+								}
 							}
 						}
 						boxes.set(i, j, k, tmpbox);
