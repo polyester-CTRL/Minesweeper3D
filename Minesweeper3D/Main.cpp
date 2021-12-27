@@ -42,7 +42,7 @@ void Main()
 	// const Font font(60, Typeface::Medium);
 
 	bool isGameover = false;
-	Array<size_t> checked(numOfBlock * numOfBlock * numOfBlock);
+	Array3D<size_t> checked(numOfBlock, numOfBlock, numOfBlock, 0);
 
 	Array3D<std::pair<int32, OrientedBox>> boxes(numOfBlock, numOfBlock, numOfBlock);
 	Array3D<Mesh> billboards(numOfBlock, numOfBlock, numOfBlock, Mesh{MeshData::Billboard()});
@@ -80,9 +80,9 @@ void Main()
 			size_t boxIndex = 998244353;
 			double minDistance = Math::Inf;
 
-			for (int i = 0; i < numOfBlock; i++) {
-				for (int j = 0; j < numOfBlock; j++) {
-					for (int k = 0; k < numOfBlock; k++) {
+			for (int32 i = 0; i < numOfBlock; i++) {
+				for (int32 j = 0; j < numOfBlock; j++) {
+					for (int32 k = 0; k < numOfBlock; k++) {
 						auto& tmpbox = boxes.get(i, j, k);
 						tmpbox.second.setPos(Vec3{ i - numOfBlock / 2, j - numOfBlock / 2, k - numOfBlock / 2 } *rotation + Vec3{ 0, 4, 0 });
 						tmpbox.second.setOrientation(rotation);
@@ -96,7 +96,7 @@ void Main()
 									boxIndex = boxes.get_index(i, j, k);
 								}
 							}
-							if(checked[boxes.get_index(i, j, k)])
+							if(checked.get(i, j, k))
 							{
 								tmpbox.second.draw(ColorF{ 1.0, 0.8, 0.0, 0.8 });
 							}
@@ -129,22 +129,38 @@ void Main()
 								return result;
 							};
 							int32 numBomb = countBomb();
+							Print << numBomb;
 							if (numBomb > 0)
 							{
-								const ScopedRenderTarget2D renderTarget2d(numRenderTextures.get(i, j, k));
+								const ScopedRenderTarget2D renderTarget2d{ numRenderTextures.get(i, j, k).clear(ColorF{1, 1, 1, 0}) };
 								const ScopedRenderStates2D blendState2d(BlendState(true, Blend::SrcAlpha, Blend::InvSrcAlpha, BlendOp::Add, Blend::Zero, Blend::One, BlendOp::Max, false));
-								fonts.get(i, j, k)(numBomb).drawAt(64, 64, Palette::Green);
 								
-								billboards.get(i, j, k).draw(camera.billboard(tmpbox.second.center, 0.9), numRenderTextures.get(i, j, k));
-								// レンダーテクスチャへの描画を完了
-								{
-									Graphics2D::Flush();
-									numRenderTextures.get(i, j, k).resolve();
-								}
+								fonts.get(i, j, k)(numBomb).drawAt(64, 64, Palette::Green);
 							}
 						}
 						boxes.set(i, j, k, tmpbox);
 						
+					}
+				}
+			}
+
+
+			Graphics2D::Flush();
+			for (int32 i = 0; i < numOfBlock; i++)
+			{
+				for (int32 j = 0; j < numOfBlock; j++)
+				{
+					for (int32 k = 0; k < numOfBlock; k++)
+					{
+						auto& tmpbox = boxes.get(i, j, k);
+						tmpbox.second.setPos(Vec3{ i - numOfBlock / 2, j - numOfBlock / 2, k - numOfBlock / 2 } *rotation + Vec3{ 0, 4, 0 });
+						tmpbox.second.setOrientation(rotation);
+
+						// レンダーテクスチャへの描画を完了
+						numRenderTextures.get(i, j, k).resolve();
+
+						const ScopedRenderStates3D blend{ BlendState::OpaqueAlphaToCoverage };
+						billboards.get(i, j, k).draw(camera.billboard(tmpbox.second.center, 0.9), numRenderTextures.get(i, j, k));
 					}
 				}
 			}
@@ -170,7 +186,7 @@ void Main()
 				else if (MouseR.down())
 				{
 					// 状態を反転
-					checked[boxIndex] ^= 1;
+					checked.get(boxIndex) ^= 1;
 				}
 			}
 
