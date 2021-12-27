@@ -113,13 +113,13 @@ void Main()
 								
 								Vec3 pos = boxes.vec3FromIndex(boxes.get_index(i, j, k));
 								int32 result = 0;
-								for (int32 i = Max<int32>(0, pos.x - 1); i < Min<int32>(boxes.width(), pos.x + 2); i++)
+								for (int32 ci = Max<int32>(0, (int32)pos.x - 1); ci < Min<int32>(boxes.width(), (int32)pos.x + 2); ci++)
 								{
-									for (int32 j = Max<int32>(0, pos.y - 1); j < Min<int32>(boxes.height(), pos.y + 2); j++)
+									for (int32 cj = Max<int32>(0, (int32)pos.y - 1); cj < Min<int32>(boxes.height(), (int32)pos.y + 2); cj++)
 									{
-										for (int32 k = Max<int32>(0, pos.z - 1); k < Min<int32>(boxes.depth(), pos.z + 2); k++)
+										for (int32 ck = Max<int32>(0, (int32)pos.z - 1); ck < Min<int32>(boxes.depth(), (int32)pos.z + 2); ck++)
 										{
-											if (boxes.get(i, j, k).first > 0)
+											if (boxes.get(ci, cj, ck).first > 0)
 											{
 												result++;
 											}
