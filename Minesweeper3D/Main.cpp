@@ -3,8 +3,6 @@
 // # include "TorusIntersect.hpp"
 
 
-
-
 void Main()
 {
 	Window::Resize(1280, 720);
@@ -13,52 +11,65 @@ void Main()
 	// const Texture earthTexture{ U"example/texture/earth.jpg", TextureDesc::MippedSRGB };
 	// const Texture woodTexture{ U"example/texture/wood.jpg", TextureDesc::MippedSRGB };
 	const MSRenderTexture renderTexture{ Scene::Size(), TextureFormat::R8G8B8A8_Unorm_SRGB, HasDepth::Yes };
-	DebugCamera3D camera{ renderTexture.size(), 40_deg, Vec3{ 9, 15, -20 } };
-	
-	
+	DebugCamera3D camera{ renderTexture.size(), 40_deg, Vec3{ 9, 15, -20 }, Vec3{8.59, 14.44, -19.09} };
+
+
+
 
 	const int numOfBlock = 7;
 
 	OrientedBox box{ 0,4,0,1 };
-	
+
 	Quaternion rotation; // 回転の状態
 	// bool grabbedX = false;
 	// bool grabbedY = false;
 
 
 	// const Disc diY{ box.center, 1 };
-	
+
 
 	const Cylinder cY{ box.center, 6.0, 1 };
 	const Cylinder cX{ box.center, 6.0, 1, Quaternion::RotateZ(90_deg) };
 	const Mesh torusY{ MeshData::Torus(box.center, 6.0, 0.6) };
 	const Mesh torusX{ MeshData::Torus(6.0, 0.6) };
 
-	// const Mesh billboard{ MeshData::Billboard() };
-
-	// 表示用テクスチャ
-	// RenderTexture numRenderTexture(128, 128);
-	// フォント
-	// const Font font(60, Typeface::Medium);
+	
 
 	bool isGameover = false;
 	Array3D<size_t> checked(numOfBlock, numOfBlock, numOfBlock, 0);
 
 	Array3D<std::pair<int32, OrientedBox>> boxes(numOfBlock, numOfBlock, numOfBlock);
-	Array3D<Mesh> billboards(numOfBlock, numOfBlock, numOfBlock, Mesh{MeshData::Billboard()});
-	Array3D<MSRenderTexture> numRenderTextures(numOfBlock, numOfBlock, numOfBlock, MSRenderTexture(128, 128));
-	Array3D<Font> fonts(numOfBlock, numOfBlock, numOfBlock, Font{ 60, Typeface::Medium });
+	// Array3D<Mesh> billboards(numOfBlock, numOfBlock, numOfBlock, Mesh{ MeshData::Billboard() });
+	// Array3D<MSRenderTexture> numRenderTextures(numOfBlock, numOfBlock, numOfBlock, MSRenderTexture(128, 128));
+	// Array3D<Font> fonts(numOfBlock, numOfBlock, numOfBlock, Font{ 60, Typeface::Medium });
 	for (int32 i = 0; i < numOfBlock; i++)
 	{
 		for (int32 j = 0; j < numOfBlock; j++)
 		{
 			for (int32 k = 0; k < numOfBlock; k++)
 			{
-				boxes.set(i, j, k, { (int32)RandomBool(0.2), OrientedBox{ Vec3{i - numOfBlock / 2, j - numOfBlock / 2, k - numOfBlock / 2} * rotation + Vec3{0, 4, 0},
+				boxes.set(i, j, k, { (int32)RandomBool(0.2), OrientedBox{ Vec3{i - numOfBlock / 2, j - numOfBlock / 2, k - numOfBlock / 2} *rotation + Vec3{0, 4, 0},
 								 Vec3{0.9, 0.9, 0.9}, rotation} });
 			}
 		}
 	}
+
+	// 0～26 のを作る
+	Array<MSRenderTexture> numberTextures(27, MSRenderTexture(128, 128)); // 26 個
+	Font numberFont(Font{ 60, Typeface::Medium });
+	for (int32 i = 0; i <= 2; i++)
+	{
+		const ScopedRenderTarget2D numRenderTarget(numberTextures[i]);
+		const ScopedRenderStates2D blendState2d(BlendState(true, Blend::SrcAlpha, Blend::InvSrcAlpha, BlendOp::Add, Blend::Zero, Blend::One, BlendOp::Max, false));
+		numberFont(i).drawAt(64, 64, Palette::Green);
+	}
+	Graphics2D::Flush();
+	for (int32 i = 0; i <= 26; i++)
+	{
+		numberTextures[i].resolve();
+	}
+	const Mesh billboard{ MeshData::Billboard() };
+	// 2D 描画してちゃんと作れてるか確認
 
 	while (System::Update())
 	{
@@ -68,12 +79,12 @@ void Main()
 		Print << camera.getEyePosition();  // デバッグ用カメラの位置を取得
 		Print << camera.getFocusPosition();
 
-
+		
 
 		{
 			const Ray ray = camera.screenToRay(Cursor::PosF());
 			const ScopedRenderTarget3D target{ renderTexture.clear(backgroundColor) };
-			
+
 			Plane{ 64 }.draw(uvChecker);
 
 			// 交差し、もっとも手前にあるボックスのインデックス
@@ -96,7 +107,7 @@ void Main()
 									boxIndex = boxes.get_index(i, j, k);
 								}
 							}
-							if(checked.get(i, j, k))
+							if (checked.get(i, j, k))
 							{
 								tmpbox.second.draw(ColorF{ 1.0, 0.8, 0.0, 0.8 });
 							}
@@ -104,13 +115,14 @@ void Main()
 							{
 								tmpbox.second.draw(ColorF{ 1.0, 1.0, 1.0, 0.8 });
 							}
-							
+
 							// FontAsset(U"Number")(U"0").draw(camera.billboard(Vec3{i - numOfBlock / 2, j - numOfBlock / 2, k - numOfBlock / 2} *rotation + Vec3{0, 4, 0}, 1));
 						}
 						else
 						{
-							auto countBomb = [&]() ->int32{
-								
+							// 周囲の爆弾の数を数えるラムダ式
+							auto countBomb = [&]() ->int32 {
+
 								Vec3 pos = boxes.vec3FromIndex(boxes.get_index(i, j, k));
 								int32 result = 0;
 								for (int32 ci = Max<int32>(0, (int32)pos.x - 1); ci < Min<int32>(boxes.width(), (int32)pos.x + 2); ci++)
@@ -130,21 +142,31 @@ void Main()
 							};
 							int32 numBomb = countBomb();
 							Print << numBomb;
+
+							// 爆弾の数を表示
 							if (numBomb > 0)
 							{
-								const ScopedRenderTarget2D renderTarget2d{ numRenderTextures.get(i, j, k).clear(ColorF{1, 1, 1, 0}) };
-								const ScopedRenderStates2D blendState2d(BlendState(true, Blend::SrcAlpha, Blend::InvSrcAlpha, BlendOp::Add, Blend::Zero, Blend::One, BlendOp::Max, false));
-								
-								fonts.get(i, j, k)(numBomb).drawAt(64, 64, Palette::Green);
+								// const ScopedRenderTarget2D renderTarget2d{ numRenderTextures.get(i, j, k).clear(ColorF{1, 1, 1, 0}) };
+								// const ScopedRenderStates2D blendState2d(BlendState(true, Blend::SrcAlpha, Blend::InvSrcAlpha, BlendOp::Add, Blend::Zero, Blend::One, BlendOp::Max, false));
+								// fonts.get(i, j, k)(numBomb).drawAt(64, 64, Palette::Green);
+								const ScopedRenderStates3D blend{ BlendState::OpaqueAlphaToCoverage };
+								billboard.draw(camera.billboard(tmpbox.second.center, 0.9), numberTextures[numBomb]);
+
 							}
 						}
 						boxes.set(i, j, k, tmpbox);
-						
+
 					}
 				}
 			}
 
+			for (int32 i = 0; i <= 26; i++)
+			{
+				// billboard.draw(camera.billboard(Vec3{i, 1, 0}, 0.9), numberTextures[i]);
+			}
 
+			// 周囲の爆弾の数を表示する
+			/*
 			Graphics2D::Flush();
 			for (int32 i = 0; i < numOfBlock; i++)
 			{
@@ -160,10 +182,11 @@ void Main()
 						numRenderTextures.get(i, j, k).resolve();
 
 						const ScopedRenderStates3D blend{ BlendState::OpaqueAlphaToCoverage };
-						billboards.get(i, j, k).draw(camera.billboard(tmpbox.second.center, 0.9), numRenderTextures.get(i, j, k));
+						billboard.draw(camera.billboard(tmpbox.second.center, 0.9), numRenderTextures.get(i, j, k));
 					}
 				}
 			}
+			*/
 
 			if (minDistance != Math::Inf && boxIndex < 998244353)
 			{
@@ -203,12 +226,14 @@ void Main()
 			{
 				rotation *= Quaternion::RotateX(-1_deg * Cursor::DeltaF().y);
 			}
-
 			if (grabbedY)
 			{
 				rotation *= Quaternion::RotateY(-1_deg * Cursor::DeltaF().x);
 			}*/
 
+
+			// 立方体を回転
+			/*
 			if (KeyA.pressed())
 			{
 				rotation *= Quaternion::RotateY(1_deg);
@@ -225,6 +250,7 @@ void Main()
 			{
 				rotation *= Quaternion::RotateX(-1_deg);
 			}
+			*/
 			// const Optional<float> cyd = TorusXYIntersect(ray, { box.center, 6.0}, box.center);
 			//const Optional<float> cyd = ray.intersects(cY);
 			//const Optional<float> cxd = ray.intersects(cX);
